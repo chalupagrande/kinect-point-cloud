@@ -3,29 +3,23 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 // import registered from '../assets/registered4.json'
 import depth from '../assets/depth4.json'
 import { flatten } from 'lodash'
+import * as pako from 'pako';
+import {pointCloudOptions} from '../App'
 
 const opts = {
   canvasWidth: window.innerWidth,
   canvasHeight: window.innerHeight,
-  skip: 3,
-  maxDepth: 4000,
   scaleDivisor: 10,
   depthAdjustment: -200
 }
 
-type PointsData = {
-  depth: number[],
-  width: number,
-  height: number,
-  // color: number[][][],
-}
+type PointsData = number[]
+const defaultPointsData = flatten(depth)
+const depthWidth = 512
+const depthHeight = 424
 
-const defaultPointsData = {
-  depth: flatten(depth),
-  width: 512,
-  height: 424,
-  // color: registered
-}
+console.log(defaultPointsData.length)
+
 
 let pointsData: PointsData = defaultPointsData as PointsData
 
@@ -52,8 +46,7 @@ export function depthToPointCloudPos(x: number, y: number, depthValue: number) {
 }
 
 
-
-export default function PointCloud(canvas: HTMLCanvasElement) {
+export default function PointCloudWS(canvas: HTMLCanvasElement) {
   let scene: THREE.Scene;
   let camera: THREE.PerspectiveCamera;
   let renderer: THREE.WebGLRenderer;
@@ -64,12 +57,19 @@ export default function PointCloud(canvas: HTMLCanvasElement) {
   let group: THREE.Group
 
 
-  const wsc = new WebSocket('ws://192.168.86.159:8080', ['client'])
+  const wsc = new WebSocket('ws://localhost:8000/ws')
+  wsc.binaryType = "arraybuffer";
 
-  wsc.addEventListener('message', (msg) => {
-    const data = atob(msg.data)
-    // console.log("MESSAGE", data)
-    pointsData = JSON.parse(data)
+  let first = true
+  wsc.addEventListener('message', (event) => {
+    const message = event.data
+    const compressedData = new Uint8Array(message);
+    const decompressedData = pako.inflate(compressedData, {to: 'string'})
+    pointsData = JSON.parse(decompressedData)
+    if(first) {
+      console.log(pointsData.length)
+      first = false
+    }
   })
 
   wsc.addEventListener('close', () => {
@@ -104,16 +104,13 @@ export default function PointCloud(canvas: HTMLCanvasElement) {
     const axesHelper = new THREE.AxesHelper(55);
     scene.add(axesHelper);
 
-
-
     renderer.setSize(opts.canvasWidth, opts.canvasHeight)
   }
 
   function createPointCloud(pointsData?: PointsData) {
     if (pointsData) {
-      const depthWidth = pointsData.width
-      const depthHeight = pointsData.height
-      const depthArray = pointsData.depth
+
+      const depthArray = pointsData
       // const colorArray = pointsData.color
       // const color = new THREE.Color()
       // const colors: number[] = []
@@ -121,11 +118,12 @@ export default function PointCloud(canvas: HTMLCanvasElement) {
       geometry = new THREE.BufferGeometry()
 
       let maxPP = 0
-      for (let x = 0; x < depthWidth; x += opts.skip) {
-        for (let y = 0; y < depthHeight; y += opts.skip) {
+      const skip = pointCloudOptions.skip
+      for (let x = 0; x < depthWidth; x+= skip) {
+        for (let y = 0; y < depthHeight; y+= skip) {
           const offset = x + y * depthWidth
           const depthValue = depthArray[offset]
-          if (depthValue > opts.maxDepth) {
+          if (depthValue > pointCloudOptions.clipBack || depthValue < pointCloudOptions.clipFront) {
             continue
           }
           // const colorValue = colorArray[y][x]
@@ -139,7 +137,7 @@ export default function PointCloud(canvas: HTMLCanvasElement) {
       geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(points), 3))
       // geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
       material = new THREE.PointsMaterial({
-        size: 2,
+        size: pointCloudOptions.pointSize,
         // vertexColors: !!colorArray.length,
         color: 0x000000,
         sizeAttenuation: false,
@@ -160,31 +158,37 @@ export default function PointCloud(canvas: HTMLCanvasElement) {
 
   function updatePoints() {
     if (geometry && !!pointCloud && pointsData) {
-      const depthArray = pointsData.depth
-      const depthWidth = pointsData.width
-      const depthHeight = pointsData.height
+      const depthArray = pointsData
       // const colorArray = pointsData.color
       // const colors: number[] = []
       // const color = new THREE.Color()
       const newPoints = []
       // let maxPP = 0
-      for (let x = 0; x < depthWidth; x += opts.skip) {
-        for (let y = 0; y < depthHeight; y += opts.skip) {
+
+      const skip = pointCloudOptions.skip
+      for (let x = 0; x < depthWidth; x+= skip) {
+        for (let y = 0; y < depthHeight; y+= skip) {
           const offset = x + y * depthWidth
 
           const depthValue = depthArray[offset]
-          if (depthValue > opts.maxDepth) {
+          if (
+            depthValue > pointCloudOptions.clipBack ||
+            depthValue < pointCloudOptions.clipFront ||
+            x > pointCloudOptions.clipRight ||
+            x < pointCloudOptions.clipLeft
+            ) {
             continue
           }
           // const colorValue = colorArray[y][x]
           // color.setRGB(colorValue[0] / 255, colorValue[1] / 255, colorValue[2] / 255)
           // colors.push(color.r, color.g, color.b)
-          const pp = depthToPointCloudPos(x, y, depthValue / opts.scaleDivisor)
+          const pp = depthToPointCloudPos(x, y, depthValue / 15)
           // maxPP = Math.max(maxPP, pp.z)
           newPoints.push(pp.x, pp.y, pp.z)
         }
       }
       geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(newPoints), 3))
+      material.size = pointCloudOptions.pointSize
       // geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
       // pointCloud.position.z = maxPP / 2 * -1
 
@@ -203,7 +207,7 @@ export default function PointCloud(canvas: HTMLCanvasElement) {
   function draw() {
     renderer.render(scene, camera);
     updatePoints()
-    // group.rotateY(0.005)
+    group.rotateY(pointCloudOptions.rotateSpeed / 1000)
     // console.log(camera.position)
     // orbitControls.update()
     requestAnimationFrame(draw);

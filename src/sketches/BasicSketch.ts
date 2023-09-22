@@ -12,6 +12,36 @@ export default function BasicSketch(canvas: HTMLCanvasElement) {
   let renderer: THREE.WebGLRenderer;
   let orbitControls: OrbitControls;
   let cube: THREE.Mesh;
+  console.log("Attempting to establish WebSocket connection...");
+  const socket = new WebSocket("ws://192.168.86.239:8000/ws");
+
+
+  socket.addEventListener('open', () => {
+    console.log("WebSocket connection established.");
+  });
+
+  socket.addEventListener('message', (event) => {
+    const message = event.data
+    console.log(message)
+  })
+
+  // Handle connection closure
+  socket.addEventListener("close", function (event) {
+    if (event.wasClean) {
+      console.log(
+        "WebSocket closed cleanly, code=" +
+          event.code +
+          ", reason=" +
+          event.reason
+      );
+    } else {
+      console.error("WebSocket connection broken");
+    }
+  });
+
+  socket.addEventListener('error', (error) => {
+    console.error("WebSocket Error:", error);
+  });
 
 
   function setup(canvas: HTMLCanvasElement) {

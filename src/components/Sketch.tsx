@@ -1,10 +1,13 @@
 import { useRef, useEffect, useCallback } from 'react'
 
+
 type SketchProps = {
     sketch: (canvas: HTMLCanvasElement) => void
 }
 
+
 function Sketch({ sketch }: SketchProps) {
+
     let canvasRef = useRef(null)
     const memoSketch = useCallback((c: HTMLCanvasElement) => sketch(c), [false])
 
@@ -15,7 +18,11 @@ function Sketch({ sketch }: SketchProps) {
         }
     }, [canvasRef.current])
 
-    return (<canvas ref={canvasRef} />)
+    return (
+        <div>
+            <canvas ref={canvasRef} />
+        </div>
+    )
 }
 
 export default Sketch
