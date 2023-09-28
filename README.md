@@ -9,5 +9,3 @@ https://rjw57.github.io/freenect2-python/
 3. `conda activate kinect2`
 4. `python server.py`
 5. navigate to `localhost:8000`
-
-## Skip

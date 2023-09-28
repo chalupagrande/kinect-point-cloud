@@ -1,3 +1,14 @@
+
+/**
+ *
+ * 9/24/23
+ * THIS IS ALL THE OLD APPROACH. Use Server.py in the root instead
+ *
+ *
+ *
+ */
+
+
 import express from 'express'
 import zlib from 'zlib'
 const app = express()

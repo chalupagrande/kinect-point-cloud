@@ -1,8 +1,7 @@
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 // import registered from '../assets/registered4.json'
-import depth from '../assets/depth4.json'
-import { flatten } from 'lodash'
+import depth from '../assets/cam1_quarter_size.json'
 import * as pako from 'pako';
 import {pointCloudOptions} from '../App'
 
@@ -10,13 +9,14 @@ const opts = {
   canvasWidth: window.innerWidth,
   canvasHeight: window.innerHeight,
   scaleDivisor: 10,
-  depthAdjustment: -200
+  depthAdjustment: -200,
+  compression: 2 // this number needs to match the SKIP number in the server.py `process_list` function
 }
 
 type PointsData = number[]
-const defaultPointsData = flatten(depth)
-const depthWidth = 512
-const depthHeight = 424
+const defaultPointsData = depth
+const depthWidth = 512 / opts.compression
+const depthHeight = 424 / opts.compression
 
 console.log(defaultPointsData.length)
 
@@ -129,7 +129,11 @@ export default function PointCloudWS(canvas: HTMLCanvasElement) {
           // const colorValue = colorArray[y][x]
           // color.setRGB(colorValue[0] / 255, colorValue[1] / 255, colorValue[2] / 255)
           // colors.push(color.r, color.g, color.b)
-          const pp = depthToPointCloudPos(x, y, depthValue / opts.scaleDivisor)
+          const pp = depthToPointCloudPos(
+            x * opts.compression,
+            y * opts.compression,
+            depthValue / opts.scaleDivisor
+          )
           maxPP = Math.max(maxPP, pp.z)
           points.push(pp.x, pp.y, pp.z)
         }
@@ -182,7 +186,11 @@ export default function PointCloudWS(canvas: HTMLCanvasElement) {
           // const colorValue = colorArray[y][x]
           // color.setRGB(colorValue[0] / 255, colorValue[1] / 255, colorValue[2] / 255)
           // colors.push(color.r, color.g, color.b)
-          const pp = depthToPointCloudPos(x, y, depthValue / 15)
+          const pp = depthToPointCloudPos(
+            x * opts.compression,
+            y*opts.compression,
+            depthValue / 15
+          )
           // maxPP = Math.max(maxPP, pp.z)
           newPoints.push(pp.x, pp.y, pp.z)
         }

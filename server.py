@@ -15,7 +15,9 @@ from fastapi.responses import FileResponse
 from freenect2 import Device, FrameType
 
 frames = {}
+frames2 = {}
 undistorted_depth = []
+undistorted_depth2 = []
 registered_color = []
 payload = []
 
@@ -25,7 +27,8 @@ app = FastAPI()
 app.mount("/dist", StaticFiles(directory="dist"), name="dist")
 logging.info("SErver running")
 
-device = Device()
+device = Device(serial=b'088079340147')
+# device2 = Device(serial=b'032351734147')
 
 
 def process_list(data):
@@ -40,9 +43,7 @@ def compress_data(data):
 
 
 async def capture_frames():
-    global registered_color
     global undistorted_depth
-    global payload
     with device.running():
         for type_, frame in device:
             frames[type_] = frame
@@ -53,11 +54,29 @@ async def capture_frames():
         await asyncio.sleep(0.01)  # This sleep is to prevent the loop from being too busy
 
 
+# async def capture_frames2():
+#     global undistorted_depth2
+#     with device2.running():
+#         for type_, frame in device2:
+#             frames[type_] = frame
+#             # Capture undistorted_depth and registered_color frames
+#             if FrameType.Depth in frames and FrameType.Color in frames:
+#                 # Process and store the frames as needed
+#                 undistorted_depth2 = frames[FrameType.Depth]
+#         await asyncio.sleep(0.01)  # This sleep is to prevent the loop from being too busy
+
+
+
 
 def capture_frames_thread():
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     loop.run_until_complete(capture_frames())
+
+# def capture_frames_thread2():
+#     loop = asyncio.new_event_loop()
+#     asyncio.set_event_loop(loop)
+#     loop.run_until_complete(capture_frames2())
 
 
 # Start the frame capture loop in a separate thread
@@ -65,6 +84,11 @@ capture_thread = threading.Thread(target=capture_frames_thread)
 # Allow the thread to be terminated when the main program exits
 capture_thread.daemon = True
 capture_thread.start()
+
+# capture_thread2 = threading.Thread(target=capture_frames_thread2)
+# # Allow the thread to be terminated when the main program exits
+# capture_thread2.daemon = True
+# capture_thread2.start()
 
 @app.get("/")
 async def read_root():
@@ -96,6 +120,7 @@ async def websocket_endpoint(websocket: WebSocket):
 def close_application():
     print("Shutting Down....")
     device.stop()
+    # device2.stop()
     print("Closing server")
 
 
