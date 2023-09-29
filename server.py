@@ -50,7 +50,7 @@ async def capture_frames():
             if FrameType.Depth in frames:
                 # Process and store the frames as needed
                 undistorted_depth1 = frames[FrameType.Depth]
-            await asyncio.sleep(1)  # This sleep is to prevent the loop from being too busy
+            # await asyncio.sleep(0.1)  # This sleep is to prevent the loop from being too busy
 
 
 async def capture_frames2():
@@ -63,7 +63,7 @@ async def capture_frames2():
             if FrameType.Depth in frames2:
                 # Process and store the frames as needed
                 undistorted_depth2 = frames2[FrameType.Depth]
-            await asyncio.sleep(1)  # This sleep is to prevent the loop from being too busy
+            # await asyncio.sleep(0.1)  # This sleep is to prevent the loop from being too busy
 
 
 def capture_frames_thread():
