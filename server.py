@@ -15,8 +15,7 @@ from freenect2 import Device, FrameType
 
 frames = {}
 frames2 = {}
-undistorted_depth = []
-undistorted_depth2 = []
+undistorted_depth = {"cam1":[], "cam2":[]}
 payload = []
 
 logging.basicConfig(filename="server.log", level=logging.INFO)
@@ -26,7 +25,7 @@ app.mount("/dist", StaticFiles(directory="dist"), name="dist")
 logging.info("SErver running")
 
 device = Device(serial=b'088079340147')
-# device2 = Device(serial=b'032351734147')
+device2 = Device(serial=b'032351734147')
 
 
 def process_depth(data2d, skip=2):
@@ -40,7 +39,7 @@ def compress_data(data):
     return compressed
 
 
-async def capture_frames():
+async def capture_frames(device, cameraNumber):
     global undistorted_depth
     with device.running():
         for type_, frame in device:
@@ -48,18 +47,9 @@ async def capture_frames():
             # Capture undistorted_depth and registered_color frames
             if FrameType.Depth in frames and FrameType.Color in frames:
                 # Process and store the frames as needed
-                undistorted_depth = frames[FrameType.Depth]
+                undistorted_depth[cameraNumber] = frames[FrameType.Depth]
         await asyncio.sleep(0.01)  # This sleep is to prevent the loop from being too busy
 
-
-# async def capture_frames2():
-#     global undistorted_depth2
-#         for type_, frame in device2:
-#             frames[type_] = frame
-#             if FrameType.Depth in frames and FrameType.Color in frames:
-#                 # Process and store the frames as needed
-#                 undistorted_depth2 = frames[FrameType.Depth]
-#         await asyncio.sleep(0.01)  # This sleep is to prevent the loop from being too busy
 
 
 
@@ -67,7 +57,7 @@ async def capture_frames():
 def capture_frames_thread():
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    loop.run_until_complete(capture_frames())
+    loop.run_until_complete(capture_frames(device))
 
 # def capture_frames_thread2():
 #     loop = asyncio.new_event_loop()
@@ -100,12 +90,15 @@ async def websocket_endpoint(websocket: WebSocket):
 
     try:
         while True:
-            depth_array = undistorted_depth.to_array()
-            depth_processed = process_depth(depth_array)
-            compressed = compress_data(depth_processed.tolist())
-            payload = compressed
+            result = []
+            for camera in undistorted_depth.values():
+                depth_array = camera.to_array()
+                depth_processed = process_depth(depth_array)
+                result.append(depth_processed)
 
-            await websocket.send_bytes(payload)
+            compressed = compress_data(result)
+            await websocket.send_bytes(compressed)
+
     except WebSocketDisconnect:
         logging.info("WebSocket disconnected.")
     except Exception as e:
