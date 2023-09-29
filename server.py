@@ -103,7 +103,7 @@ async def websocket_endpoint(websocket: WebSocket):
         while True:
             result = []
             for camera in [undistorted_depth1, undistorted_depth2]:
-                logging.info("are they equal", str(undistorted_depth2 == undistorted_depth1))
+                logging.info("are they equal" + str(undistorted_depth2 == undistorted_depth1))
                 try:
                     depth_array = camera.to_array()
                     depth_processed = process_depth(depth_array)
