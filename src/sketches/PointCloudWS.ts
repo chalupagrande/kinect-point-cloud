@@ -57,7 +57,7 @@ export default function PointCloudWS(canvas: HTMLCanvasElement) {
   let group: THREE.Group
 
 
-  const wsc = new WebSocket('ws://localhost:8000/ws')
+  const wsc = new WebSocket('ws://localhost:8001/ws')
   wsc.binaryType = "arraybuffer";
 
   let first = true
@@ -66,7 +66,7 @@ export default function PointCloudWS(canvas: HTMLCanvasElement) {
     const message = event.data
     const compressedData = new Uint8Array(message);
     const decompressedData = pako.inflate(compressedData, {to: 'string'})
-    pointsData = JSON.parse(decompressedData)
+    pointsData = JSON.parse(decompressedData)[0]
     if(first) {
       console.log(pointsData.length)
       first = false

@@ -29,7 +29,7 @@ device2 = Device(serial=b'032351734147')
 
 
 def process_depth(data2d, skip=2):
-    return np.round(data2d[::skip, ::skip]).astype(int).flatten()
+    return np.round(data2d[::skip, ::skip]).astype(int).flatten().tolist()
 
 
 
@@ -57,12 +57,12 @@ async def capture_frames(device, cameraNumber):
 def capture_frames_thread():
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    loop.run_until_complete(capture_frames(device))
+    loop.run_until_complete(capture_frames(device, "cam1"))
 
-# def capture_frames_thread2():
-#     loop = asyncio.new_event_loop()
-#     asyncio.set_event_loop(loop)
-#     loop.run_until_complete(capture_frames2())
+def capture_frames_thread2():
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.run_until_complete(capture_frames(device2, "cam2"))
 
 
 # Start the frame capture loop in a separate thread
@@ -71,10 +71,10 @@ capture_thread = threading.Thread(target=capture_frames_thread)
 capture_thread.daemon = True
 capture_thread.start()
 
-# capture_thread2 = threading.Thread(target=capture_frames_thread2)
-# # Allow the thread to be terminated when the main program exits
-# capture_thread2.daemon = True
-# capture_thread2.start()
+capture_thread2 = threading.Thread(target=capture_frames_thread2)
+# Allow the thread to be terminated when the main program exits
+capture_thread2.daemon = True
+capture_thread2.start()
 
 @app.get("/")
 async def read_root():
@@ -118,4 +118,4 @@ atexit.register(close_application)
 if __name__ == "__main__":
     print("starting server")
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8001)
