@@ -60,7 +60,7 @@ async def capture_frames2():
         for type_, frame in device2:
             frames2[type_] = frame
             # Capture undistorted_depth and registered_color frames
-            if FrameType.Depth in frames2 and FrameType.Color in frames2:
+            if FrameType.Depth in frames and FrameType.Color in frames2:
                 # Process and store the frames as needed
                 undistorted_depth2 = frames2[FrameType.Depth]
         await asyncio.sleep(0.01)  # This sleep is to prevent the loop from being too busy
