@@ -3,9 +3,8 @@ import json
 import asyncio
 import threading  # Import the threading module
 import logging  # Import the logging module
-
+import numpy as np
 import zlib
-import os
 
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
@@ -18,7 +17,6 @@ frames = {}
 frames2 = {}
 undistorted_depth = []
 undistorted_depth2 = []
-registered_color = []
 payload = []
 
 logging.basicConfig(filename="server.log", level=logging.INFO)
@@ -31,9 +29,9 @@ device = Device(serial=b'088079340147')
 # device2 = Device(serial=b'032351734147')
 
 
-def process_list(data):
-    return [round(x) for idx, x in enumerate(data) if idx % 2 == 0]
-    # return [round(x) for x in data]
+def process_depth(data2d, skip=2):
+    return np.round(data2d[::skip, ::skip]).astype(int).flatten()
+
 
 
 def compress_data(data):
@@ -56,10 +54,8 @@ async def capture_frames():
 
 # async def capture_frames2():
 #     global undistorted_depth2
-#     with device2.running():
 #         for type_, frame in device2:
 #             frames[type_] = frame
-#             # Capture undistorted_depth and registered_color frames
 #             if FrameType.Depth in frames and FrameType.Color in frames:
 #                 # Process and store the frames as needed
 #                 undistorted_depth2 = frames[FrameType.Depth]
@@ -105,8 +101,7 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         while True:
             depth_array = undistorted_depth.to_array()
-            depth_flattened = depth_array.flatten().tolist()
-            depth_processed = process_list(depth_flattened)
+            depth_processed = process_depth(depth_array)
             compressed = compress_data(depth_processed)
             payload = compressed
 

@@ -61,6 +61,7 @@ export default function PointCloudWS(canvas: HTMLCanvasElement) {
   wsc.binaryType = "arraybuffer";
 
   let first = true
+  // let messageCount = 0
   wsc.addEventListener('message', (event) => {
     const message = event.data
     const compressedData = new Uint8Array(message);
@@ -70,7 +71,14 @@ export default function PointCloudWS(canvas: HTMLCanvasElement) {
       console.log(pointsData.length)
       first = false
     }
+    // messageCount +=1
   })
+
+  // uncomment for FPS (messages from server per second)
+  // setInterval(()=> {
+  //   console.log(messageCount + "fps")
+  //   messageCount = 0
+  // }, 1000)
 
   wsc.addEventListener('close', () => {
     console.log("CLOSED")
@@ -147,7 +155,7 @@ export default function PointCloudWS(canvas: HTMLCanvasElement) {
         sizeAttenuation: false,
       })
       pointCloud = new THREE.Points(geometry, material)
-      pointCloud.position.z = maxPP / 2 * -1
+      pointCloud.position.z = pointCloudOptions.depthAdjustment
       group = new THREE.Group()
       group.add(pointCloud)
       scene.add(group)
@@ -188,7 +196,7 @@ export default function PointCloudWS(canvas: HTMLCanvasElement) {
           // colors.push(color.r, color.g, color.b)
           const pp = depthToPointCloudPos(
             x * opts.compression,
-            y*opts.compression,
+            y * opts.compression,
             depthValue / 15
           )
           // maxPP = Math.max(maxPP, pp.z)
@@ -198,7 +206,7 @@ export default function PointCloudWS(canvas: HTMLCanvasElement) {
       geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(newPoints), 3))
       material.size = pointCloudOptions.pointSize
       // geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-      // pointCloud.position.z = maxPP / 2 * -1
+      pointCloud.position.z = pointCloudOptions.depthAdjustment
 
     }
   }
