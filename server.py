@@ -102,7 +102,7 @@ async def websocket_endpoint(websocket: WebSocket):
         while True:
             depth_array = undistorted_depth.to_array()
             depth_processed = process_depth(depth_array)
-            compressed = compress_data(depth_processed)
+            compressed = compress_data(depth_processed.tolist())
             payload = compressed
 
             await websocket.send_bytes(payload)
