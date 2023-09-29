@@ -13,10 +13,10 @@ from fastapi.responses import FileResponse
 
 from freenect2 import Device, FrameType
 
-frames = {}
-frames2 = {}
 undistorted_depth1 = []
 undistorted_depth2 = []
+frames = {}
+frames2 = {}
 payload = []
 
 logging.basicConfig(filename="server.log", level=logging.INFO)
@@ -33,49 +33,51 @@ def process_depth(data2d, skip=2):
     return np.round(data2d[::skip, ::skip]).astype(int).flatten().tolist()
 
 
-
 def compress_data(data):
     json_str = json.dumps(data)
     compressed = zlib.compress(json_str.encode('utf-8'))
     return compressed
 
-
-
-
-async def capture_frames():
+def capture_frames():
     global undistorted_depth1
-    with device.running():
-        for type_, frame in device:
-            frames[type_] = frame
-            # Capture undistorted_depth and registered_color frames
-            if FrameType.Depth in frames:
-                # Process and store the frames as needed
-                undistorted_depth1 = frames[FrameType.Depth]
-        await asyncio.sleep(0.01)  # This sleep is to prevent the loop from being too busy
-
-
-async def capture_frames2():
     global undistorted_depth2
-    with device2.running():
-        for type_, frame2 in device2:
-            frames2[type_] = frame2
-            # Capture undistorted_depth and registered_color frames
-            if FrameType.Depth in frames2:
-                # Process and store the frames as needed
-                undistorted_depth2 = frames2[FrameType.Depth]
-        await asyncio.sleep(0.01)  # This sleep is to prevent the loop from being too busy
+    device.start()
+    for i, (type_, frame) in enumerate(device):
+        frames[type_] = frame
+        logging.info("CAM1" + str(i))
+        # Capture undistorted_depth and registered_color frames
+        if FrameType.Depth in frames:
+            # Process and store the frames as needed
+            undistorted_depth1 = frames[FrameType.Depth]
+        if i == 1:
+            device.stop()
+            break
 
 
+    device2.start()
+    for type_, frame in device2:
+        frames2[type_] = frame
+        logging.info("CAM2!!!!!!!!!!!!!")
+        # Capture undistorted_depth and registered_color frames
+        if FrameType.Depth in frames2:
+            # Process and store the frames as needed
+            undistorted_depth2 = frames2[FrameType.Depth]
+        if i == 1:
+            device2.stop()
+            break
+    # await asyncio.sleep(2)  # This sleep is to prevent the loop from being too busy
+    print("stopping")
+
+
+async def loop_capture_frames():
+    while True:
+        capture_frames()
 
 def capture_frames_thread():
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    loop.run_until_complete(capture_frames())
+    loop.run_until_complete(loop_capture_frames())
 
-def capture_frames_thread2():
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    loop.run_until_complete(capture_frames2())
 
 
 # Start the frame capture loop in a separate thread
@@ -84,10 +86,6 @@ capture_thread = threading.Thread(target=capture_frames_thread)
 capture_thread.daemon = True
 capture_thread.start()
 
-capture_thread2 = threading.Thread(target=capture_frames_thread2)
-# Allow the thread to be terminated when the main program exits
-capture_thread2.daemon = True
-capture_thread2.start()
 
 @app.get("/")
 async def read_root():
@@ -110,8 +108,7 @@ async def websocket_endpoint(websocket: WebSocket):
                     depth_processed = process_depth(depth_array)
                     result.append(depth_processed)
                 except Exception as e:
-                    print(camera)
-                    print(f"THING: {e}")
+                    pass
 
             compressed = compress_data(result)
             await websocket.send_bytes(compressed)
