@@ -15,7 +15,8 @@ from freenect2 import Device, FrameType
 
 frames = {}
 frames2 = {}
-undistorted_depth = {"cam1":[], "cam2":[]}
+undistorted_depth1 = []
+undistorted_depth2 = []
 payload = []
 
 logging.basicConfig(filename="server.log", level=logging.INFO)
@@ -39,30 +40,42 @@ def compress_data(data):
     return compressed
 
 
-async def capture_frames(device, cameraNumber):
-    global undistorted_depth
+
+
+async def capture_frames():
+    global undistorted_depth1
     with device.running():
         for type_, frame in device:
             frames[type_] = frame
             # Capture undistorted_depth and registered_color frames
             if FrameType.Depth in frames and FrameType.Color in frames:
                 # Process and store the frames as needed
-                undistorted_depth[cameraNumber] = frames[FrameType.Depth]
+                undistorted_depth1 = frames[FrameType.Depth]
         await asyncio.sleep(0.01)  # This sleep is to prevent the loop from being too busy
 
 
+async def capture_frames2():
+    global undistorted_depth2
+    with device2.running():
+        for type_, frame in device2:
+            frames2[type_] = frame
+            # Capture undistorted_depth and registered_color frames
+            if FrameType.Depth in frames2 and FrameType.Color in frames2:
+                # Process and store the frames as needed
+                undistorted_depth2 = frames2[FrameType.Depth]
+        await asyncio.sleep(0.01)  # This sleep is to prevent the loop from being too busy
 
 
 
 def capture_frames_thread():
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    loop.run_until_complete(capture_frames(device, "cam1"))
+    loop.run_until_complete(capture_frames())
 
 def capture_frames_thread2():
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    loop.run_until_complete(capture_frames(device2, "cam2"))
+    loop.run_until_complete(capture_frames2())
 
 
 # Start the frame capture loop in a separate thread
@@ -91,7 +104,7 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         while True:
             result = []
-            for camera in undistorted_depth.values():
+            for camera in [undistorted_depth2, undistorted_depth1]:
                 depth_array = camera.to_array()
                 depth_processed = process_depth(depth_array)
                 result.append(depth_processed)
