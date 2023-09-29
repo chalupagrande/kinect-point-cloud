@@ -42,6 +42,7 @@ def compress_data(data):
 
 async def capture_frames():
     global undistorted_depth1
+    # logging.info("starting cam1")
     with device.running():
         for type_, frame in device:
             frames[type_] = frame
@@ -49,19 +50,20 @@ async def capture_frames():
             if FrameType.Depth in frames:
                 # Process and store the frames as needed
                 undistorted_depth1 = frames[FrameType.Depth]
-        await asyncio.sleep(0.01)  # This sleep is to prevent the loop from being too busy
+            await asyncio.sleep(1)  # This sleep is to prevent the loop from being too busy
 
 
-def capture_frames2():
+async def capture_frames2():
     global undistorted_depth2
     with device2.running():
+        # logging.info("RUNNING cam 2")
         for type_, frame2 in device2:
             frames2[type_] = frame2
             # Capture undistorted_depth and registered_color frames
             if FrameType.Depth in frames2:
                 # Process and store the frames as needed
                 undistorted_depth2 = frames2[FrameType.Depth]
-
+            await asyncio.sleep(1)  # This sleep is to prevent the loop from being too busy
 
 
 def capture_frames_thread():
@@ -103,7 +105,6 @@ async def websocket_endpoint(websocket: WebSocket):
         while True:
             result = []
             for camera in [undistorted_depth1, undistorted_depth2]:
-                logging.info("are they equal" + str(undistorted_depth2 == undistorted_depth1))
                 try:
                     depth_array = camera.to_array()
                     depth_processed = process_depth(depth_array)
