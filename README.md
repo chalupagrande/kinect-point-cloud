@@ -6,6 +6,7 @@ https://rjw57.github.io/freenect2-python/
 
 ## Getting started
 
+0. make sure the kinects are plugged into different ports
 1. `yarn build`
 2. Update the paths of the assets in the `build/index.html` to have `dist` infront (ie: `<link rel="icon" type="image/svg+xml" href="/dist/vite.svg" />`)
 3. `conda activate kinect2`
