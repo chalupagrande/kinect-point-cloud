@@ -1,5 +1,7 @@
 # React Kinect Point Cloud with Websocket Server
 
+## USE THIS REPO FOR DEVELOPMENT 9/29/23
+
 https://rjw57.github.io/freenect2-python/
 
 ## Getting started

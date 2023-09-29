@@ -58,7 +58,7 @@ export default function PointCloudWS(canvas: HTMLCanvasElement) {
   let group: THREE.Group
 
 
-  const wsc = new WebSocket('ws://localhost:8001/ws')
+  const wsc = new WebSocket('ws://localhost:8000/ws')
   wsc.binaryType = "arraybuffer";
 
   let first = true
