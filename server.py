@@ -108,7 +108,7 @@ async def websocket_endpoint(websocket: WebSocket):
 def close_application():
     print("Shutting Down....")
     device.stop()
-    # device2.stop()
+    device2.stop()
     print("Closing server")
 
 

@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 // import registered from '../assets/registered4.json'
-import depth from '../assets/cam1_quarter_size.json'
+import depth from '../assets/two_cameras.json'
 import * as pako from 'pako';
 import {pointCloudOptions} from '../App'
 
@@ -13,7 +13,7 @@ const opts = {
   compression: 2 // this number needs to match the SKIP number in the server.py `process_list` function
 }
 
-type PointsData = number[]
+type PointsData = number[][]
 const defaultPointsData = depth
 const depthWidth = 512 / opts.compression
 const depthHeight = 424 / opts.compression
@@ -22,6 +22,7 @@ console.log(defaultPointsData.length)
 
 
 let pointsData: PointsData = defaultPointsData as PointsData
+console.log(JSON.stringify(pointsData[0]) === JSON.stringify(pointsData[1]))
 
 //camera information based on the Kinect v2 hardware
 const CameraParams = {
@@ -66,7 +67,7 @@ export default function PointCloudWS(canvas: HTMLCanvasElement) {
     const message = event.data
     const compressedData = new Uint8Array(message);
     const decompressedData = pako.inflate(compressedData, {to: 'string'})
-    pointsData = JSON.parse(decompressedData)[0]
+    pointsData = JSON.parse(decompressedData)
     if(first) {
       console.log(pointsData.length)
       first = false
@@ -118,7 +119,7 @@ export default function PointCloudWS(canvas: HTMLCanvasElement) {
   function createPointCloud(pointsData?: PointsData) {
     if (pointsData) {
 
-      const depthArray = pointsData
+
       // const colorArray = pointsData.color
       // const color = new THREE.Color()
       // const colors: number[] = []
@@ -127,23 +128,26 @@ export default function PointCloudWS(canvas: HTMLCanvasElement) {
 
       let maxPP = 0
       const skip = pointCloudOptions.skip
-      for (let x = 0; x < depthWidth; x+= skip) {
-        for (let y = 0; y < depthHeight; y+= skip) {
-          const offset = x + y * depthWidth
-          const depthValue = depthArray[offset]
-          if (depthValue > pointCloudOptions.clipBack || depthValue < pointCloudOptions.clipFront) {
-            continue
+      for(let camera = pointsData.length - 1; camera >= 0; camera--) {
+        const depthArray = pointsData[camera]
+        for (let x = 0; x < depthWidth; x+= skip) {
+          for (let y = 0; y < depthHeight; y+= skip) {
+            const offset = x + y * depthWidth
+            const depthValue = depthArray[offset]
+            if (depthValue > pointCloudOptions.clipBack || depthValue < pointCloudOptions.clipFront) {
+              continue
+            }
+            // const colorValue = colorArray[y][x]
+            // color.setRGB(colorValue[0] / 255, colorValue[1] / 255, colorValue[2] / 255)
+            // colors.push(color.r, color.g, color.b)
+            const pp = depthToPointCloudPos(
+              x * opts.compression,
+              y * opts.compression,
+              depthValue / opts.scaleDivisor
+            )
+            maxPP = Math.max(maxPP, pp.z)
+            points.push(pp.x, pp.y, pp.z)
           }
-          // const colorValue = colorArray[y][x]
-          // color.setRGB(colorValue[0] / 255, colorValue[1] / 255, colorValue[2] / 255)
-          // colors.push(color.r, color.g, color.b)
-          const pp = depthToPointCloudPos(
-            x * opts.compression,
-            y * opts.compression,
-            depthValue / opts.scaleDivisor
-          )
-          maxPP = Math.max(maxPP, pp.z)
-          points.push(pp.x, pp.y, pp.z)
         }
       }
       geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(points), 3))
@@ -170,7 +174,6 @@ export default function PointCloudWS(canvas: HTMLCanvasElement) {
 
   function updatePoints() {
     if (geometry && !!pointCloud && pointsData) {
-      const depthArray = pointsData
       // const colorArray = pointsData.color
       // const colors: number[] = []
       // const color = new THREE.Color()
@@ -178,29 +181,32 @@ export default function PointCloudWS(canvas: HTMLCanvasElement) {
       // let maxPP = 0
 
       const skip = pointCloudOptions.skip
-      for (let x = 0; x < depthWidth; x+= skip) {
-        for (let y = 0; y < depthHeight; y+= skip) {
-          const offset = x + y * depthWidth
+      for(let camera = pointsData.length - 1; camera >= 0; camera--) {
+        const depthArray = pointsData[camera]
+        for (let x = 0; x < depthWidth; x+= skip) {
+          for (let y = 0; y < depthHeight; y+= skip) {
+            const offset = x + y * depthWidth
 
-          const depthValue = depthArray[offset]
-          if (
-            depthValue > pointCloudOptions.clipBack ||
-            depthValue < pointCloudOptions.clipFront ||
-            x > pointCloudOptions.clipRight ||
-            x < pointCloudOptions.clipLeft
-            ) {
-            continue
+            const depthValue = depthArray[offset]
+            if (
+              depthValue > pointCloudOptions.clipBack ||
+              depthValue < pointCloudOptions.clipFront ||
+              x > pointCloudOptions.clipRight ||
+              x < pointCloudOptions.clipLeft
+              ) {
+              continue
+            }
+            // const colorValue = colorArray[y][x]
+            // color.setRGB(colorValue[0] / 255, colorValue[1] / 255, colorValue[2] / 255)
+            // colors.push(color.r, color.g, color.b)
+            const pp = depthToPointCloudPos(
+              x * opts.compression,
+              y * opts.compression,
+              depthValue / 15
+            )
+            // maxPP = Math.max(maxPP, pp.z)
+            newPoints.push(pp.x, pp.y, pp.z)
           }
-          // const colorValue = colorArray[y][x]
-          // color.setRGB(colorValue[0] / 255, colorValue[1] / 255, colorValue[2] / 255)
-          // colors.push(color.r, color.g, color.b)
-          const pp = depthToPointCloudPos(
-            x * opts.compression,
-            y * opts.compression,
-            depthValue / 15
-          )
-          // maxPP = Math.max(maxPP, pp.z)
-          newPoints.push(pp.x, pp.y, pp.z)
         }
       }
       geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(newPoints), 3))
