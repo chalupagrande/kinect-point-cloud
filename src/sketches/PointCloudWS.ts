@@ -18,10 +18,9 @@ const defaultPointsData = depth
 const depthWidth = 512 / opts.compression
 const depthHeight = 424 / opts.compression
 
-console.log(defaultPointsData.length)
 
 
-let pointsData: PointsData = defaultPointsData as PointsData
+const pointsData: PointsData = defaultPointsData as PointsData
 console.log(JSON.stringify(pointsData[0]) === JSON.stringify(pointsData[1]))
 
 //camera information based on the Kinect v2 hardware
@@ -59,21 +58,26 @@ export default function PointCloudWS(canvas: HTMLCanvasElement) {
 
 
   const wsc = new WebSocket('ws://localhost:8001/ws')
+  const wsc2 = new WebSocket('ws://localhost:8002/ws')
   wsc.binaryType = "arraybuffer";
+  wsc2.binaryType = "arraybuffer";
 
   let first = true
   // let messageCount = 0
-  wsc.addEventListener('message', (event) => {
+  //@ts-ignore
+  const handleMessage = (event, cameraIndex) => {
     const message = event.data
     const compressedData = new Uint8Array(message);
     const decompressedData = pako.inflate(compressedData, {to: 'string'})
-    pointsData = JSON.parse(decompressedData)
+    pointsData[cameraIndex] = JSON.parse(decompressedData)
     if(first) {
       console.log(pointsData.length)
       first = false
     }
     // messageCount +=1
-  })
+  }
+  wsc.addEventListener('message', (e) => handleMessage(e, 1) )
+  wsc2.addEventListener('message', (e) => handleMessage(e, 2))
 
   // uncomment for FPS (messages from server per second)
   // setInterval(()=> {

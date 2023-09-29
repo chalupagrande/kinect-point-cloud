@@ -21,11 +21,11 @@ payload = []
 logging.basicConfig(filename="server.log", level=logging.INFO)
 
 app = FastAPI()
-app.mount("/dist", StaticFiles(directory="/dist"), name="dist")
+app.mount("/dist", StaticFiles(directory="dist"), name="dist")
 logging.info("SErver running")
 
-device2 = Device(serial=b'088079340147')
-# device2 = Device(serial=b'032351734147')
+# device = Device(serial=b'088079340147')
+device2 = Device(serial=b'032351734147')
 
 
 def process_depth(data2d, skip=2):
@@ -107,4 +107,4 @@ atexit.register(close_application)
 if __name__ == "__main__":
     print("starting server")
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8001)
+    uvicorn.run(app, host="0.0.0.0", port=8002)
