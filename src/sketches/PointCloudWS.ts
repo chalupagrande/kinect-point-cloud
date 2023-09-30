@@ -3,7 +3,8 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 // import registered from '../assets/registered4.json'
 import depth from '../assets/two_cameras.json'
 import * as pako from 'pako';
-import {pointCloudOptions} from '../App'
+import {pointCloudOptions} from '../components/Settings'
+import { CameraParams } from '../assets/cameraParams';
 
 const opts = {
   canvasWidth: window.innerWidth,
@@ -18,24 +19,9 @@ const defaultPointsData = depth
 const depthWidth = 512 / opts.compression
 const depthHeight = 424 / opts.compression
 
-console.log(defaultPointsData.length)
-
-
 let pointsData: PointsData = defaultPointsData as PointsData
-console.log(JSON.stringify(pointsData[0]) === JSON.stringify(pointsData[1]))
 
-//camera information based on the Kinect v2 hardware
-const CameraParams = {
-  cx: 254.878,
-  cy: 205.395,
-  fx: 365.456,
-  fy: 365.456,
-  k1: 0.0905474,
-  k2: -0.26819,
-  k3: 0.0950862,
-  p1: 0.0,
-  p2: 0.0,
-}
+
 
 //calculte the xyz camera position based on the depth data
 export function depthToPointCloudPos(x: number, y: number, depthValue: number) {
@@ -52,10 +38,9 @@ export default function PointCloudWS(canvas: HTMLCanvasElement) {
   let camera: THREE.PerspectiveCamera;
   let renderer: THREE.WebGLRenderer;
   let orbitControls: OrbitControls;
-  let geometry: THREE.BufferGeometry
-  let material: THREE.PointsMaterial
-  let pointCloud: THREE.Points
-  let group: THREE.Group
+  const group: THREE.Group = new THREE.Group
+  const pointClouds:THREE.Points[] = []
+  let boundingBoxMesh: THREE.Mesh
 
 
   const wsc = new WebSocket('ws://localhost:8000/ws')
@@ -108,11 +93,17 @@ export default function PointCloudWS(canvas: HTMLCanvasElement) {
     camera.position.x = 0
     camera.position.y = 0
     camera.position.z = 250
-    createPointCloud(pointsData)
 
     const axesHelper = new THREE.AxesHelper(55);
     scene.add(axesHelper);
 
+    const boundingBoxGeo = new THREE.BoxGeometry(1000,1000,100);
+    const boundingBoxMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    boundingBoxMesh = new THREE.Mesh(boundingBoxGeo, boundingBoxMat);
+
+
+
+    createPointCloud(pointsData)
     renderer.setSize(opts.canvasWidth, opts.canvasHeight)
   }
 
@@ -123,57 +114,67 @@ export default function PointCloudWS(canvas: HTMLCanvasElement) {
       // const colorArray = pointsData.color
       // const color = new THREE.Color()
       // const colors: number[] = []
-      const points: number[] = []
-      geometry = new THREE.BufferGeometry()
 
-      let maxPP = 0
+
       const skip = pointCloudOptions.skip
-      for(let camera = pointsData.length - 1; camera >= 0; camera--) {
+      for(let camera = 0; camera < pointsData.length; camera++) {
+        const points: number[] = []
+        const geometry = new THREE.BufferGeometry()
+        const material = new THREE.PointsMaterial({
+          size: pointCloudOptions.pointSize,
+          // vertexColors: !!colorArray.length,
+          color: 0x000000,
+          sizeAttenuation: false,
+        })
         const depthArray = pointsData[camera]
+
         for (let x = 0; x < depthWidth; x+= skip) {
           for (let y = 0; y < depthHeight; y+= skip) {
             const offset = x + y * depthWidth
             const depthValue = depthArray[offset]
-            if (depthValue > pointCloudOptions.clipBack || depthValue < pointCloudOptions.clipFront) {
-              continue
-            }
+
             // const colorValue = colorArray[y][x]
             // color.setRGB(colorValue[0] / 255, colorValue[1] / 255, colorValue[2] / 255)
             // colors.push(color.r, color.g, color.b)
-            const pp = depthToPointCloudPos(
+            const pointVector = depthToPointCloudPos(
               x * opts.compression,
               y * opts.compression,
-              depthValue / opts.scaleDivisor
+              depthValue / 15
             )
-            maxPP = Math.max(maxPP, pp.z)
-            points.push(pp.x, pp.y, pp.z)
+            // if (!isInBoundingBox(pointVector)) {
+            //   continue
+            // }
+            points.push(pointVector.x, pointVector.y, pointVector.z)
+
           }
         }
+        geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(points), 3))
+        // geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+
+
+        // not sure why this is throwing error
+        //@ts-ignore
+        geometry.verticesNeedUpdate = true
+
+        const pointCloud = new THREE.Points(geometry, material)
+        pointCloud.position.z = pointCloudOptions.depthAdjustment
+        group.add(pointCloud)
+        pointClouds.push(pointCloud)
       }
-      geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(points), 3))
-      // geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-      material = new THREE.PointsMaterial({
-        size: pointCloudOptions.pointSize,
-        // vertexColors: !!colorArray.length,
-        color: 0x000000,
-        sizeAttenuation: false,
-      })
-      pointCloud = new THREE.Points(geometry, material)
-      pointCloud.position.z = pointCloudOptions.depthAdjustment
-      group = new THREE.Group()
-      group.add(pointCloud)
-      scene.add(group)
+      console.log(group)
       group.rotateY(Math.PI)
       group.rotateZ(Math.PI)
-      return pointCloud
-      // not sure why this is throwing error
-      //@ts-ignore
-      geometry.verticesNeedUpdate = true
+      scene.add(group)
+
+      return group
     }
   }
 
   function updatePoints() {
-    if (geometry && !!pointCloud && pointsData) {
+    if (group.children.length) {
+      // resizeBoundingBox()
+
+
       // const colorArray = pointsData.color
       // const colors: number[] = []
       // const color = new THREE.Color()
@@ -181,41 +182,56 @@ export default function PointCloudWS(canvas: HTMLCanvasElement) {
       // let maxPP = 0
 
       const skip = pointCloudOptions.skip
-      for(let camera = pointsData.length - 1; camera >= 0; camera--) {
-        const depthArray = pointsData[camera]
+      for(let cameraIndex = 0; cameraIndex < pointsData.length; cameraIndex++) {
+        const pointCloud = pointClouds[cameraIndex]
+        const depthArray = pointsData[cameraIndex]
         for (let x = 0; x < depthWidth; x+= skip) {
           for (let y = 0; y < depthHeight; y+= skip) {
             const offset = x + y * depthWidth
 
             const depthValue = depthArray[offset]
-            if (
-              depthValue > pointCloudOptions.clipBack ||
-              depthValue < pointCloudOptions.clipFront ||
-              x > pointCloudOptions.clipRight ||
-              x < pointCloudOptions.clipLeft
-              ) {
-              continue
-            }
-            // const colorValue = colorArray[y][x]
-            // color.setRGB(colorValue[0] / 255, colorValue[1] / 255, colorValue[2] / 255)
-            // colors.push(color.r, color.g, color.b)
-            const pp = depthToPointCloudPos(
+            const pointVector = depthToPointCloudPos(
               x * opts.compression,
               y * opts.compression,
               depthValue / 15
             )
+            // if (!isInBoundingBox(pointVector)) {
+            //   continue
+            // }
+            // const colorValue = colorArray[y][x]
+            // color.setRGB(colorValue[0] / 255, colorValue[1] / 255, colorValue[2] / 255)
+            // colors.push(color.r, color.g, color.b)
+
             // maxPP = Math.max(maxPP, pp.z)
-            newPoints.push(pp.x, pp.y, pp.z)
+            newPoints.push(pointVector.x, pointVector.y, pointVector.z)
           }
         }
+        const geometry = pointCloud.geometry
+        const material = pointCloud.material
+        geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(newPoints), 3))
+        //@ts-ignore
+        material.size = pointCloudOptions.pointSize
       }
-      geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(newPoints), 3))
-      material.size = pointCloudOptions.pointSize
+
       // geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-      pointCloud.position.z = pointCloudOptions.depthAdjustment
+      // pointCloud.position.z = pointCloudOptions.depthAdjustment
 
     }
   }
+
+  function isInBoundingBox(point: THREE.Vector3){
+    const boundingBox = new THREE.Box3().setFromObject(boundingBoxMesh)
+    return boundingBox.containsPoint(point);
+  }
+
+  function resizeBoundingBox() {
+    const newGeometry = new THREE.BoxGeometry(pointCloudOptions.bbWidth, pointCloudOptions.bbHeight, pointCloudOptions.bbDepth);
+    // Dispose the old geometry to free up memory
+    boundingBoxMesh.geometry.dispose();
+
+    // Assign the new geometry to the mesh
+    boundingBoxMesh.geometry = newGeometry;
+}
 
   function onWindowResize() {
     opts.canvasWidth = window.innerWidth
