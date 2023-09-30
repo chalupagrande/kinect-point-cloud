@@ -2,12 +2,13 @@ import React, {useState} from 'react'
 
 export const pointCloudOptions = {
   pointSize: 2,
-  skip: 1,
+  skip: 2,
   rotateSpeed: 0,
   bbWidth: 1000,
   bbHeight: 1000,
   bbDepth: 1000,
-  depthAdjustment: -200
+  depthAdjustment: -200,
+  groupIndex: 1
 }
 export type PointCloudOption = keyof typeof pointCloudOptions
 
@@ -20,6 +21,7 @@ export const Settings = () => {
   const [bbHeight, setBBHeight] = useState(pointCloudOptions.bbHeight)
   const [bbDepth, setBBDepth] = useState(pointCloudOptions.bbDepth)
   const [depthAdjustment, setDepthAdjustment] = useState(pointCloudOptions.depthAdjustment)
+  const [groupIndex, setGroupIndex] = useState(0)
 
   function createHandleNumChange(optionsKey: PointCloudOption, updateFunc: React.Dispatch<React.SetStateAction<number>>){
     return (e: React.FormEvent<HTMLInputElement>) => {
@@ -61,6 +63,17 @@ export const Settings = () => {
             <div>
               <label htmlFor='depthAdjustment'>Origin:</label>{depthAdjustment}<br/>
               <input id="depthAdjustment" type="range" min="-1000" max="0" onChange={createHandleNumChange("depthAdjustment", setDepthAdjustment)} value={depthAdjustment}></input>
+            </div>
+            <div>
+              <label htmlFor='groupIndex'>Group to Adjust:</label>{groupIndex}<br/>
+              <select onChange={(e)=> {
+                const value = parseInt(e.target.value)
+                setGroupIndex(value)
+                pointCloudOptions.groupIndex = value
+              }}>
+                <option value={0}>0</option>
+                <option value={1}>1</option>
+              </select>
             </div>
           </form>
         }

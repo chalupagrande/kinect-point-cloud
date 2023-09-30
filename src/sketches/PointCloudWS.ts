@@ -5,6 +5,7 @@ import depth from '../assets/two_cameras.json'
 import * as pako from 'pako';
 import {pointCloudOptions} from '../components/Settings'
 import { CameraParams } from '../assets/cameraParams';
+import { compressPositions } from 'three/examples/jsm/utils/GeometryCompressionUtils.js';
 
 const opts = {
   canvasWidth: window.innerWidth,
@@ -40,7 +41,7 @@ export default function PointCloudWS(canvas: HTMLCanvasElement) {
   let orbitControls: OrbitControls;
   const group: THREE.Group = new THREE.Group
   const pointClouds:THREE.Points[] = []
-  let boundingBoxMesh: THREE.Mesh
+  // let boundingBoxMesh: THREE.Mesh
 
 
   const wsc = new WebSocket('ws://localhost:8000/ws')
@@ -97,9 +98,9 @@ export default function PointCloudWS(canvas: HTMLCanvasElement) {
     const axesHelper = new THREE.AxesHelper(55);
     scene.add(axesHelper);
 
-    const boundingBoxGeo = new THREE.BoxGeometry(1000,1000,100);
-    const boundingBoxMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-    boundingBoxMesh = new THREE.Mesh(boundingBoxGeo, boundingBoxMat);
+    // const boundingBoxGeo = new THREE.BoxGeometry(1000,1000,100);
+    // const boundingBoxMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    // boundingBoxMesh = new THREE.Mesh(boundingBoxGeo, boundingBoxMat);
 
 
 
@@ -178,11 +179,11 @@ export default function PointCloudWS(canvas: HTMLCanvasElement) {
       // const colorArray = pointsData.color
       // const colors: number[] = []
       // const color = new THREE.Color()
-      const newPoints = []
       // let maxPP = 0
 
       const skip = pointCloudOptions.skip
       for(let cameraIndex = 0; cameraIndex < pointsData.length; cameraIndex++) {
+        const newPoints = []
         const pointCloud = pointClouds[cameraIndex]
         const depthArray = pointsData[cameraIndex]
         for (let x = 0; x < depthWidth; x+= skip) {
@@ -219,19 +220,21 @@ export default function PointCloudWS(canvas: HTMLCanvasElement) {
     }
   }
 
-  function isInBoundingBox(point: THREE.Vector3){
-    const boundingBox = new THREE.Box3().setFromObject(boundingBoxMesh)
-    return boundingBox.containsPoint(point);
-  }
 
-  function resizeBoundingBox() {
-    const newGeometry = new THREE.BoxGeometry(pointCloudOptions.bbWidth, pointCloudOptions.bbHeight, pointCloudOptions.bbDepth);
-    // Dispose the old geometry to free up memory
-    boundingBoxMesh.geometry.dispose();
 
-    // Assign the new geometry to the mesh
-    boundingBoxMesh.geometry = newGeometry;
-}
+  // function isInBoundingBox(point: THREE.Vector3){
+  //   const boundingBox = new THREE.Box3().setFromObject(boundingBoxMesh)
+  //   return boundingBox.containsPoint(point);
+  // }
+
+  // function resizeBoundingBox() {
+  //   const newGeometry = new THREE.BoxGeometry(pointCloudOptions.bbWidth, pointCloudOptions.bbHeight, pointCloudOptions.bbDepth);
+  //   // Dispose the old geometry to free up memory
+  //   boundingBoxMesh.geometry.dispose();
+
+  //   // Assign the new geometry to the mesh
+  //   boundingBoxMesh.geometry = newGeometry;
+  // }
 
   function onWindowResize() {
     opts.canvasWidth = window.innerWidth
@@ -251,7 +254,46 @@ export default function PointCloudWS(canvas: HTMLCanvasElement) {
     requestAnimationFrame(draw);
   }
 
+  function addKeyboardControls(moveStep: number = 1, rotateStep: number = THREE.MathUtils.degToRad(5)) {
+    document.addEventListener('keydown', (event: KeyboardEvent) => {
+      const pointCloudToUpdate = group.children[pointCloudOptions.groupIndex]
+        switch (event.key) {
+            // Position adjustments
+            case 'ArrowUp':
+                pointCloudToUpdate.position.z -= moveStep;
+                break;
+            case 'ArrowDown':
+                pointCloudToUpdate.position.z += moveStep;
+                break;
+            case 'ArrowLeft':
+                pointCloudToUpdate.position.x -= moveStep;
+                break;
+            case 'ArrowRight':
+                pointCloudToUpdate.position.x += moveStep;
+                break;
+
+            // Rotation adjustments
+            case 'w':  // Rotate around X-axis (pitch)
+                pointCloudToUpdate.rotation.x += rotateStep;
+                break;
+            case 's':
+                pointCloudToUpdate.rotation.x -= rotateStep;
+                break;
+            case 'a':  // Rotate around Y-axis (yaw)
+                pointCloudToUpdate.rotation.y -= rotateStep;
+                break;
+            case 'd':
+                pointCloudToUpdate.rotation.y += rotateStep;
+                break;
+
+            // Add more controls as needed
+        }
+        console.log(pointCloudToUpdate.position, pointCloudToUpdate.rotation)
+    });
+  }
+
   setup(canvas)
+  addKeyboardControls()
   window.addEventListener('resize', onWindowResize, false)
   draw()
 }
