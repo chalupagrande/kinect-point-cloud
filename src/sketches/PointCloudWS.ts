@@ -5,7 +5,6 @@ import depth from '../assets/two_cameras.json'
 import * as pako from 'pako';
 import {pointCloudOptions} from '../components/Settings'
 import { CameraParams } from '../assets/cameraParams';
-import { compressPositions } from 'three/examples/jsm/utils/GeometryCompressionUtils.js';
 
 const opts = {
   canvasWidth: window.innerWidth,
@@ -13,6 +12,20 @@ const opts = {
   scaleDivisor: 10,
   depthAdjustment: -200,
   compression: 2 // this number needs to match the SKIP number in the server.py `process_list` function
+}
+// const lsDualCameraCalibrationString = localStorage.getItem("dualCameraCalibration")
+// const lsDualCameraCalibration = typeof lsDualCameraCalibrationString === 'string' ? JSON.parse(lsDualCameraCalibrationString) : undefined
+const dualCameraCalibration = {
+  position: {
+    x:12,
+    y:-5,
+    z:92,
+  },
+  rotation: {
+    x: 0.08726646,
+    y: -3.05432619,
+    z: 0
+  }
 }
 
 type PointsData = number[][]
@@ -95,8 +108,8 @@ export default function PointCloudWS(canvas: HTMLCanvasElement) {
     camera.position.y = 0
     camera.position.z = 250
 
-    const axesHelper = new THREE.AxesHelper(55);
-    scene.add(axesHelper);
+    // const axesHelper = new THREE.AxesHelper(55);
+    // scene.add(axesHelper);
 
     // const boundingBoxGeo = new THREE.BoxGeometry(1000,1000,100);
     // const boundingBoxMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
@@ -118,7 +131,7 @@ export default function PointCloudWS(canvas: HTMLCanvasElement) {
 
 
       const skip = pointCloudOptions.skip
-      for(let camera = 0; camera < pointsData.length; camera++) {
+      for(let cameraIndex = 0; cameraIndex < pointsData.length; cameraIndex++) {
         const points: number[] = []
         const geometry = new THREE.BufferGeometry()
         const material = new THREE.PointsMaterial({
@@ -127,7 +140,7 @@ export default function PointCloudWS(canvas: HTMLCanvasElement) {
           color: 0x000000,
           sizeAttenuation: false,
         })
-        const depthArray = pointsData[camera]
+        const depthArray = pointsData[cameraIndex]
 
         for (let x = 0; x < depthWidth; x+= skip) {
           for (let y = 0; y < depthHeight; y+= skip) {
@@ -158,9 +171,19 @@ export default function PointCloudWS(canvas: HTMLCanvasElement) {
         geometry.verticesNeedUpdate = true
 
         const pointCloud = new THREE.Points(geometry, material)
+
         pointCloud.position.z = pointCloudOptions.depthAdjustment
         group.add(pointCloud)
         pointClouds.push(pointCloud)
+        if(cameraIndex === 0) {
+          pointCloud.position.x = dualCameraCalibration.position.x
+          pointCloud.position.y = dualCameraCalibration.position.y
+          pointCloud.position.z = dualCameraCalibration.position.z
+
+          pointCloud.rotateX(dualCameraCalibration.rotation.x)
+          pointCloud.rotateY(dualCameraCalibration.rotation.y)
+          pointCloud.rotateZ(dualCameraCalibration.rotation.z)
+        }
       }
       console.log(group)
       group.rotateY(Math.PI)
@@ -254,7 +277,7 @@ export default function PointCloudWS(canvas: HTMLCanvasElement) {
     requestAnimationFrame(draw);
   }
 
-  function addKeyboardControls(moveStep: number = 1, rotateStep: number = THREE.MathUtils.degToRad(5)) {
+  function addKeyboardControls(moveStep: number = 1, rotateStep: number = THREE.MathUtils.degToRad(3)) {
     document.addEventListener('keydown', (event: KeyboardEvent) => {
       const pointCloudToUpdate = group.children[pointCloudOptions.groupIndex]
         switch (event.key) {
@@ -272,6 +295,13 @@ export default function PointCloudWS(canvas: HTMLCanvasElement) {
                 pointCloudToUpdate.position.x += moveStep;
                 break;
 
+            case '[':
+                pointCloudToUpdate.position.y -= moveStep;
+                break;
+            case ']':
+                pointCloudToUpdate.position.y += moveStep;
+                break;
+
             // Rotation adjustments
             case 'w':  // Rotate around X-axis (pitch)
                 pointCloudToUpdate.rotation.x += rotateStep;
@@ -285,6 +315,24 @@ export default function PointCloudWS(canvas: HTMLCanvasElement) {
             case 'd':
                 pointCloudToUpdate.rotation.y += rotateStep;
                 break;
+
+            case '0':
+              localStorage.setItem("dualCameraCalibration", JSON.stringify({
+                position: {
+                  x: pointCloudToUpdate.position.x,
+                  y: pointCloudToUpdate.position.y,
+                  z: pointCloudToUpdate.position.z,
+                },
+                rotation: {
+                  //@ts-ignore
+                  x: pointCloudToUpdate.rotation._x,
+                  //@ts-ignore
+                  y: pointCloudToUpdate.rotation._y,
+                  //@ts-ignore
+                  z: pointCloudToUpdate.rotation._z,
+                }
+              }))
+
 
             // Add more controls as needed
         }
