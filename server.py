@@ -27,7 +27,7 @@ app.mount("/dist", StaticFiles(directory="dist"), name="dist")
 logging.info("SErver running")
 
 device = Device(serial=b'088079340147')
-device2 = Device(serial=b'032351734147')
+# device2 = Device(serial=b'032351734147')
 
 
 def process_depth(data2d, skip=2):
@@ -53,17 +53,17 @@ async def capture_frames():
             # await asyncio.sleep(0.1)  # This sleep is to prevent the loop from being too busy
 
 
-async def capture_frames2():
-    global undistorted_depth2
-    with device2.running():
-        # logging.info("RUNNING cam 2")
-        for type_, frame2 in device2:
-            frames2[type_] = frame2
-            # Capture undistorted_depth and registered_color frames
-            if FrameType.Depth in frames2:
-                # Process and store the frames as needed
-                undistorted_depth2 = frames2[FrameType.Depth]
-            # await asyncio.sleep(0.1)  # This sleep is to prevent the loop from being too busy
+# async def capture_frames2():
+#     global undistorted_depth2
+#     with device2.running():
+#         # logging.info("RUNNING cam 2")
+#         for type_, frame2 in device2:
+#             frames2[type_] = frame2
+#             # Capture undistorted_depth and registered_color frames
+#             if FrameType.Depth in frames2:
+#                 # Process and store the frames as needed
+#                 undistorted_depth2 = frames2[FrameType.Depth]
+#             # await asyncio.sleep(0.1)  # This sleep is to prevent the loop from being too busy
 
 
 def capture_frames_thread():
@@ -77,16 +77,16 @@ capture_thread = threading.Thread(target=capture_frames_thread)
 capture_thread.daemon = True
 capture_thread.start()
 
-def capture_frames_thread2():
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    loop.run_until_complete(capture_frames2())
+# def capture_frames_thread2():
+#     loop = asyncio.new_event_loop()
+#     asyncio.set_event_loop(loop)
+#     loop.run_until_complete(capture_frames2())
 
-# Start the frame capture loop in a separate thread
-capture_thread2 = threading.Thread(target=capture_frames_thread2)
-# Allow the thread to be terminated when the main program exits
-capture_thread2.daemon = True
-capture_thread2.start()
+# # Start the frame capture loop in a separate thread
+# capture_thread2 = threading.Thread(target=capture_frames_thread2)
+# # Allow the thread to be terminated when the main program exits
+# capture_thread2.daemon = True
+# capture_thread2.start()
 
 
 @app.get("/")
@@ -104,7 +104,8 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         while True:
             result = []
-            for camera in [undistorted_depth1, undistorted_depth2]:
+            # for camera in [undistorted_depth1, undistorted_depth2]:
+            for camera in [undistorted_depth1]:
                 try:
                     depth_array = camera.to_array()
                     depth_processed = process_depth(depth_array)
@@ -124,7 +125,7 @@ async def websocket_endpoint(websocket: WebSocket):
 def close_application():
     print("Shutting Down....")
     device.stop()
-    device2.stop()
+    # device2.stop()
     print("Closing server")
 
 

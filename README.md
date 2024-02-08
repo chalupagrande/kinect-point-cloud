@@ -6,12 +6,17 @@ https://rjw57.github.io/freenect2-python/
 
 ## Getting started
 
-0. make sure the kinects are plugged into different ports
+0. make sure the kinects are plugged into different ports on different USBC adapters
 1. `yarn build`
 2. Update the paths of the assets in the `build/index.html` to have `dist` infront (ie: `<link rel="icon" type="image/svg+xml" href="/dist/vite.svg" />`)
 3. `conda activate kinect2`
 4. `python server.py`
 5. navigate to `localhost:8000`
+
+## Nother Notes
+
+- You can update the number of cameras in the opts section of `PointCloudWS.ts`
+- You are only sending every other point from the server. you can update this by changing the skip in `def process_depth(data2d, skip=2):`
 
 ## MALLOC ERROR:
 
