@@ -8,7 +8,8 @@ export const pointCloudOptions = {
   bbHeight: 1000,
   bbDepth: 1000,
   depthAdjustment: -200,
-  groupIndex: 1
+  groupIndex: 1,
+  color: 0
 }
 export type PointCloudOption = keyof typeof pointCloudOptions
 
@@ -22,17 +23,19 @@ export const Settings = () => {
   const [bbDepth, setBBDepth] = useState(pointCloudOptions.bbDepth)
   const [depthAdjustment, setDepthAdjustment] = useState(pointCloudOptions.depthAdjustment)
   const [groupIndex, setGroupIndex] = useState(0)
+  const [color, setColor] = useState(pointCloudOptions.color)
 
   function createHandleNumChange(optionsKey: PointCloudOption, updateFunc: React.Dispatch<React.SetStateAction<number>>){
-    return (e: React.FormEvent<HTMLInputElement>) => {
+    return (e: React.FormEvent<HTMLInputElement | HTMLSelectElement>) => {
       const value = parseFloat(e.currentTarget.value)
       pointCloudOptions[optionsKey] = value
       updateFunc(value)
     }
   }
 
+
   return (
-      <div style={{position: 'absolute', color: 'black', right: 0, width: 200}}>
+      <div style={{position: 'absolute', color: "#7b7b7b", right: 0, width: 200}}>
         <button onClick={()=> setShowSettings(!showSettings)}>{showSettings ? "Hide" : "Show"} Controls</button>
         { showSettings &&
           <form >
@@ -63,6 +66,13 @@ export const Settings = () => {
             <div>
               <label htmlFor='depthAdjustment'>Origin:</label>{depthAdjustment}<br/>
               <input id="depthAdjustment" type="range" min="-1000" max="0" onChange={createHandleNumChange("depthAdjustment", setDepthAdjustment)} value={depthAdjustment}></input>
+            </div>
+            <div>
+              <label htmlFor='depthAdjustment'>Color:</label>{color}<br/>
+              <select onChange={createHandleNumChange("color", setColor)}>
+                <option value={0}>Black on White</option>
+                <option value={1}>White on Black</option>
+              </select>
             </div>
             <div>
               <label htmlFor='groupIndex'>Group to Adjust:</label>{groupIndex}<br/>

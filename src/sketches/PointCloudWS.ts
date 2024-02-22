@@ -3,7 +3,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 // import registered from '../assets/registered4.json'
 import depth from '../assets/two_cameras.json'
 import * as pako from 'pako';
-import {pointCloudOptions} from '../components/Settings'
+import { pointCloudOptions } from '../components/Settings'
 import { CameraParams } from '../assets/cameraParams';
 
 const opts = {
@@ -204,6 +204,8 @@ export default function PointCloudWS(canvas: HTMLCanvasElement) {
       // const color = new THREE.Color()
       // let maxPP = 0
 
+      scene.background = pointCloudOptions.color === 0 ? new THREE.Color(0xffffff) : new THREE.Color(0x000000)
+
       const skip = pointCloudOptions.skip
       for(let cameraIndex = 0; cameraIndex < pointsData.length; cameraIndex++) {
         const newPoints = []
@@ -232,6 +234,9 @@ export default function PointCloudWS(canvas: HTMLCanvasElement) {
         }
         const geometry = pointCloud.geometry
         const material = pointCloud.material
+        //@ts-ignore
+        material.color = pointCloudOptions.color !== 0 ? new THREE.Color(0xffffff) : new THREE.Color(0x000000)
+
         geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(newPoints), 3))
         //@ts-ignore
         material.size = pointCloudOptions.pointSize
