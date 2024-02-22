@@ -13,6 +13,10 @@ https://rjw57.github.io/freenect2-python/
 4. `python server.py`
 5. navigate to `localhost:8000`
 
+## TROUBLESHOOTING
+
+1. If there is an error relating to "geometry" try running in a incognito browser or clearing cache
+
 ## MALLOC ERROR:
 
 error is appearing int the libraries queue function. I changed the BLOCK call to PUT and it seems to work. See the last line in this code block.
