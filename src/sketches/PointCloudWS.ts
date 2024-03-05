@@ -5,6 +5,7 @@ import depth from '../assets/two_cameras.json'
 import * as pako from 'pako';
 import { pointCloudOptions } from '../components/Settings'
 import { CameraParams } from '../assets/cameraParams';
+import wsc from '../WebsocketConnection'
 
 const opts = {
   canvasWidth: window.innerWidth,
@@ -13,19 +14,39 @@ const opts = {
   depthAdjustment: -200,
   compression: 2 // this number needs to match the SKIP number in the server.py `process_list` function
 }
-// const lsDualCameraCalibrationString = localStorage.getItem("dualCameraCalibration")
-// const lsDualCameraCalibration = typeof lsDualCameraCalibrationString === 'string' ? JSON.parse(lsDualCameraCalibrationString) : undefined
-const dualCameraCalibration = {
+const lsDualCameraCalibrationString = localStorage.getItem("dualCameraCalibration")
+const lsDualCameraCalibration = typeof lsDualCameraCalibrationString === 'string' ? JSON.parse(lsDualCameraCalibrationString) : undefined
+
+const dualCameraCalibration = lsDualCameraCalibration || {
   position: {
-    x:12,
-    y:-5,
+    x:0,
+    y:0,
     z:92,
   },
   rotation: {
-    x: 0.08726646,
-    y: -3.05432619,
+    x: 0,
+    y: 0,
     z: 0
   }
+}
+
+// const dualCameraCalibration = lsDualCameraCalibration || {
+//   position: {
+//     x:12,
+//     y:-5,
+//     z:92,
+//   },
+//   rotation: {
+//     x: 0.08726646,
+//     y: -3.05432619,
+//     z: 0
+//   }
+// }
+
+const currentBoundingBoxDimensions = {
+  width: pointCloudOptions.bbWidth,
+  height: pointCloudOptions.bbHeight,
+  depth: pointCloudOptions.bbDepth
 }
 
 type PointsData = number[][]
@@ -46,7 +67,6 @@ export function depthToPointCloudPos(x: number, y: number, depthValue: number) {
   return point
 }
 
-
 export default function PointCloudWS(canvas: HTMLCanvasElement) {
   let scene: THREE.Scene;
   let camera: THREE.PerspectiveCamera;
@@ -54,11 +74,8 @@ export default function PointCloudWS(canvas: HTMLCanvasElement) {
   let orbitControls: OrbitControls;
   const group: THREE.Group = new THREE.Group
   const pointClouds:THREE.Points[] = []
-  // let boundingBoxMesh: THREE.Mesh
-
-
-  const wsc = new WebSocket('ws://localhost:8000/ws')
-  wsc.binaryType = "arraybuffer";
+  let boundingBoxMesh: THREE.Mesh
+  let boundingBox: THREE.Box3
 
   let first = true
   // let messageCount = 0
@@ -108,12 +125,13 @@ export default function PointCloudWS(canvas: HTMLCanvasElement) {
     camera.position.y = 0
     camera.position.z = 250
 
-    // const axesHelper = new THREE.AxesHelper(55);
-    // scene.add(axesHelper);
+    const axesHelper = new THREE.AxesHelper(55);
+    scene.add(axesHelper);
 
-    // const boundingBoxGeo = new THREE.BoxGeometry(1000,1000,100);
-    // const boundingBoxMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-    // boundingBoxMesh = new THREE.Mesh(boundingBoxGeo, boundingBoxMat);
+    const boundingBoxGeo = new THREE.BoxGeometry(currentBoundingBoxDimensions.width,currentBoundingBoxDimensions.height,currentBoundingBoxDimensions.depth);
+    const boundingBoxMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+    boundingBoxMesh = new THREE.Mesh(boundingBoxGeo, boundingBoxMat);
+    boundingBox = new THREE.Box3().setFromObject(boundingBoxMesh)
 
 
 
@@ -196,7 +214,7 @@ export default function PointCloudWS(canvas: HTMLCanvasElement) {
 
   function updatePoints() {
     if (group.children.length) {
-      // resizeBoundingBox()
+      resizeBoundingBox()
 
 
       // const colorArray = pointsData.color
@@ -221,9 +239,9 @@ export default function PointCloudWS(canvas: HTMLCanvasElement) {
               y * opts.compression,
               depthValue / 15
             )
-            // if (!isInBoundingBox(pointVector)) {
-            //   continue
-            // }
+            if (!isInBoundingBox(pointVector)) {
+              continue
+            }
             // const colorValue = colorArray[y][x]
             // color.setRGB(colorValue[0] / 255, colorValue[1] / 255, colorValue[2] / 255)
             // colors.push(color.r, color.g, color.b)
@@ -240,29 +258,39 @@ export default function PointCloudWS(canvas: HTMLCanvasElement) {
         geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(newPoints), 3))
         //@ts-ignore
         material.size = pointCloudOptions.pointSize
+        pointCloud.position.z = pointCloudOptions.depthAdjustment
       }
 
       // geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-      // pointCloud.position.z = pointCloudOptions.depthAdjustment
+
 
     }
   }
 
 
 
-  // function isInBoundingBox(point: THREE.Vector3){
-  //   const boundingBox = new THREE.Box3().setFromObject(boundingBoxMesh)
-  //   return boundingBox.containsPoint(point);
-  // }
+  function isInBoundingBox(point: THREE.Vector3){
+    return boundingBox.containsPoint(point);
+  }
 
-  // function resizeBoundingBox() {
-  //   const newGeometry = new THREE.BoxGeometry(pointCloudOptions.bbWidth, pointCloudOptions.bbHeight, pointCloudOptions.bbDepth);
-  //   // Dispose the old geometry to free up memory
-  //   boundingBoxMesh.geometry.dispose();
+  function resizeBoundingBox() {
+    if(pointCloudOptions.bbWidth !== currentBoundingBoxDimensions.width ||
+      pointCloudOptions.bbHeight !== currentBoundingBoxDimensions.height ||
+      pointCloudOptions.bbDepth !== currentBoundingBoxDimensions.depth) {
+        const newGeometry = new THREE.BoxGeometry(pointCloudOptions.bbWidth, pointCloudOptions.bbHeight, pointCloudOptions.bbDepth);
+        // Dispose the old geometry to free up memory
+        boundingBoxMesh.geometry.dispose();
 
-  //   // Assign the new geometry to the mesh
-  //   boundingBoxMesh.geometry = newGeometry;
-  // }
+        // Assign the new geometry to the mesh
+        boundingBoxMesh.geometry = newGeometry;
+        boundingBox = new THREE.Box3().setFromObject(boundingBoxMesh)
+
+        currentBoundingBoxDimensions.depth = pointCloudOptions.bbDepth
+        currentBoundingBoxDimensions.width = pointCloudOptions.bbWidth
+        currentBoundingBoxDimensions.height = pointCloudOptions.bbHeight
+        console.log("RESIZING:", {...currentBoundingBoxDimensions})
+      }
+  }
 
   function onWindowResize() {
     opts.canvasWidth = window.innerWidth

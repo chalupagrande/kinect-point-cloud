@@ -33,6 +33,17 @@ export const Settings = () => {
     }
   }
 
+  async function handleRecording(){
+    const response = await fetch("/api", {
+      method: 'POST',
+      mode: 'cors',
+      body: JSON.stringify({action: "TESTING"})
+    })
+    const result = response.json()
+    console.log(result)
+    return result
+  }
+
 
   return (
       <div style={{position: 'absolute', color: "#7b7b7b", right: 0, width: 200}}>
@@ -60,8 +71,8 @@ export const Settings = () => {
               <input id="bbHeight" type="range" min="0" max="1000" onChange={createHandleNumChange("bbHeight", setBBHeight)} value={bbHeight}></input>
             </div>
             <div>
-              <label htmlFor='clipLeft'>bb Depth: {bbDepth}</label><br/>
-              <input id="clipLeft" type="range" min="0" max="1000" onChange={createHandleNumChange("bbDepth", setBBDepth)} value={bbDepth}></input>
+              <label htmlFor='bbDepth'>bb Depth: {bbDepth}</label><br/>
+              <input id="bbDepth" type="range" min="0" max="1000" onChange={createHandleNumChange("bbDepth", setBBDepth)} value={bbDepth}></input>
             </div>
             <div>
               <label htmlFor='depthAdjustment'>Origin:</label>{depthAdjustment}<br/>
@@ -73,6 +84,9 @@ export const Settings = () => {
                 <option value={0}>Black on White</option>
                 <option value={1}>White on Black</option>
               </select>
+            </div>
+            <div>
+              <button onClick={handleRecording}>Start Recording</button>
             </div>
             <div>
               <label htmlFor='groupIndex'>Group to Adjust:</label>{groupIndex}<br/>

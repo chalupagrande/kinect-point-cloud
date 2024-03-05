@@ -6,12 +6,9 @@ import logging  # Import the logging module
 import numpy as np
 import zlib
 from multiprocessing import Process
-
-
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-
 from freenect2 import Device, FrameType
 
 undistorted_depth1 = np.array([])
@@ -24,7 +21,7 @@ logging.basicConfig(filename="server.log", level=logging.INFO)
 
 app = FastAPI()
 app.mount("/dist", StaticFiles(directory="dist"), name="dist")
-logging.info("SErver running")
+logging.info("Server running")
 
 device = Device(serial=b'088079340147')
 device2 = Device(serial=b'032351734147')
@@ -93,6 +90,12 @@ capture_thread2.start()
 async def read_root():
     # Return the HTML file
     return FileResponse("dist/index.html")
+
+@app.post("/api")
+async def handle(payload):
+    print("I GOT THE PAYLOAD")
+    logging.info("Received the message from FE \n")
+    return {"msg":"hello"}
 
 
 @app.websocket("/ws")
