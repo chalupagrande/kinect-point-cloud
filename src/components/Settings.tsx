@@ -1,4 +1,5 @@
 import React, {useState} from 'react'
+import * as pako from 'pako';
 
 export const pointCloudOptions = {
   pointSize: 2,
@@ -24,6 +25,7 @@ export const Settings = () => {
   const [depthAdjustment, setDepthAdjustment] = useState(pointCloudOptions.depthAdjustment)
   const [groupIndex, setGroupIndex] = useState(0)
   const [color, setColor] = useState(pointCloudOptions.color)
+  const [isRecording, setIsRecording] = useState(false)
 
   function createHandleNumChange(optionsKey: PointCloudOption, updateFunc: React.Dispatch<React.SetStateAction<number>>){
     return (e: React.FormEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -33,15 +35,29 @@ export const Settings = () => {
     }
   }
 
-  async function handleRecording(){
+  async function handleRecording(e: React.FormEvent<HTMLFormElement>){
+    e.preventDefault()
     const response = await fetch("/api", {
       method: 'POST',
       mode: 'cors',
-      body: JSON.stringify({action: "TESTING"})
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({action: "start"})
     })
-    const result = response.json()
+    const result = await response.json()
+    if(result.msg === "Recording") {
+      setIsRecording(true)
+    } else {
+      setIsRecording(false)
+    }
     console.log(result)
-    return result
+    // return result
+  }
+
+  async function inflate(){
+    console.log("inflating")
+
   }
 
 
@@ -49,7 +65,7 @@ export const Settings = () => {
       <div style={{position: 'absolute', color: "#7b7b7b", right: 0, width: 200}}>
         <button onClick={()=> setShowSettings(!showSettings)}>{showSettings ? "Hide" : "Show"} Controls</button>
         { showSettings &&
-          <form >
+          <form onSubmit={handleRecording}>
             <div>
               <label htmlFor='pointSize'>Point Size: {pointSize}</label><br/>
               <input id="pointSize" type="range" min="1" max="5" step="0.1" onChange={createHandleNumChange("pointSize", setPointSize)} value={pointSize}></input>
@@ -86,7 +102,10 @@ export const Settings = () => {
               </select>
             </div>
             <div>
-              <button onClick={handleRecording}>Start Recording</button>
+              <button type="submit">{isRecording ? "Stop" : "Start"} Recording</button>
+            </div>
+            <div>
+              <p onClick={inflate}>inflate</p>
             </div>
             <div>
               <label htmlFor='groupIndex'>Group to Adjust:</label>{groupIndex}<br/>

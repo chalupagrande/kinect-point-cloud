@@ -11,6 +11,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from freenect2 import Device, FrameType
 
+
+
 undistorted_depth1 = np.array([])
 undistorted_depth2 = np.array([])
 frames = {}
@@ -22,6 +24,8 @@ logging.basicConfig(filename="server.log", level=logging.INFO)
 app = FastAPI()
 app.mount("/dist", StaticFiles(directory="dist"), name="dist")
 logging.info("Server running")
+is_recording = False
+output_file = None
 
 device = Device(serial=b'088079340147')
 device2 = Device(serial=b'032351734147')
@@ -91,21 +95,40 @@ async def read_root():
     # Return the HTML file
     return FileResponse("dist/index.html")
 
+@app.post("/inflate")
+async def inflate():
+    f = open("kinect_data.zlib", "r")
+    text = f.read()
+    return text
+
 @app.post("/api")
-async def handle(payload):
-    print("I GOT THE PAYLOAD")
-    logging.info("Received the message from FE \n")
-    return {"msg":"hello"}
+async def handle():
+    global is_recording, output_file
+    if is_recording:
+        is_recording = False
+        logging.info("~~~~~~STOP RECORDING")
+        if output_file:
+                output_file.close()
+                output_file = None
+        return {"msg": "stopped"}
+    else:
+        logging.info("~~~~~~START RECORDING")
+        is_recording = True
+        output_file = open("kinect_data.zlib", "ab")  # Open a file in append binary mode
+        return {"msg": "Recording"}
+
 
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
+    global is_recording, output_file
     logging.info("Attempting to accept WebSocket connection...")
     await websocket.accept()
     logging.info("WebSocket connection accepted.")
 
     try:
         while True:
+            await asyncio.sleep(0.1)
             result = []
             for camera in [undistorted_depth1, undistorted_depth2]:
                 try:
@@ -117,6 +140,11 @@ async def websocket_endpoint(websocket: WebSocket):
 
             compressed = compress_data(result)
             await websocket.send_bytes(compressed)
+
+            # If recording, append the compressed data to the file
+            if is_recording and output_file:
+                output_file.write(compressed)
+                output_file.flush()  # Ensure data is written to disk
 
     except WebSocketDisconnect:
         logging.info("WebSocket disconnected.")
