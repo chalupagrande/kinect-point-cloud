@@ -1,5 +1,5 @@
 import React, {useState} from 'react'
-import * as pako from 'pako';
+// import * as pako from 'pako';
 
 export const pointCloudOptions = {
   pointSize: 2,
@@ -10,7 +10,8 @@ export const pointCloudOptions = {
   bbDepth: 1000,
   depthAdjustment: -200,
   groupIndex: 1,
-  color: 0
+  color: 0,
+  numCameras: 1
 }
 export type PointCloudOption = keyof typeof pointCloudOptions
 
@@ -26,6 +27,7 @@ export const Settings = () => {
   const [groupIndex, setGroupIndex] = useState(0)
   const [color, setColor] = useState(pointCloudOptions.color)
   const [isRecording, setIsRecording] = useState(false)
+  const [numCameras, setNumCameras] = useState(pointCloudOptions.numCameras)
 
   function createHandleNumChange(optionsKey: PointCloudOption, updateFunc: React.Dispatch<React.SetStateAction<number>>){
     return (e: React.FormEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -66,6 +68,10 @@ export const Settings = () => {
         <button onClick={()=> setShowSettings(!showSettings)}>{showSettings ? "Hide" : "Show"} Controls</button>
         { showSettings &&
           <form onSubmit={handleRecording}>
+            <div>
+              <label htmlFor='pointSize'>Num Cameras: {pointSize}</label><br/>
+              <input id="pointSize" type="range" min={0} max={2} step={1} onChange={createHandleNumChange("numCameras", setNumCameras)} value={numCameras}></input>
+            </div>
             <div>
               <label htmlFor='pointSize'>Point Size: {pointSize}</label><br/>
               <input id="pointSize" type="range" min="1" max="5" step="0.1" onChange={createHandleNumChange("pointSize", setPointSize)} value={pointSize}></input>

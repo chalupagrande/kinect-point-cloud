@@ -12,7 +12,7 @@ const opts = {
   canvasHeight: window.innerHeight,
   scaleDivisor: 10,
   depthAdjustment: -200,
-  compression: 2 // this number needs to match the SKIP number in the server.py `process_list` function
+  compression: 2, // this number needs to match the SKIP number in the server.py `process_list` function
 }
 const lsDualCameraCalibrationString = localStorage.getItem("dualCameraCalibration")
 const lsDualCameraCalibration = typeof lsDualCameraCalibrationString === 'string' ? JSON.parse(lsDualCameraCalibrationString) : undefined
@@ -125,8 +125,8 @@ export default function PointCloudWS(canvas: HTMLCanvasElement) {
     camera.position.y = 0
     camera.position.z = 250
 
-    const axesHelper = new THREE.AxesHelper(55);
-    scene.add(axesHelper);
+    // const axesHelper = new THREE.AxesHelper(55);
+    // scene.add(axesHelper);
 
     const boundingBoxGeo = new THREE.BoxGeometry(currentBoundingBoxDimensions.width,currentBoundingBoxDimensions.height,currentBoundingBoxDimensions.depth);
     const boundingBoxMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
@@ -149,7 +149,7 @@ export default function PointCloudWS(canvas: HTMLCanvasElement) {
 
 
       const skip = pointCloudOptions.skip
-      for(let cameraIndex = 0; cameraIndex < pointsData.length; cameraIndex++) {
+      for(let cameraIndex = 0; cameraIndex < pointCloudOptions.numCameras; cameraIndex++) {
         const points: number[] = []
         const geometry = new THREE.BufferGeometry()
         const material = new THREE.PointsMaterial({
@@ -225,7 +225,7 @@ export default function PointCloudWS(canvas: HTMLCanvasElement) {
       scene.background = pointCloudOptions.color === 0 ? new THREE.Color(0xffffff) : new THREE.Color(0x000000)
 
       const skip = pointCloudOptions.skip
-      for(let cameraIndex = 0; cameraIndex < pointsData.length; cameraIndex++) {
+      for(let cameraIndex = 0; cameraIndex < pointCloudOptions.numCameras; cameraIndex++) {
         const newPoints = []
         const pointCloud = pointClouds[cameraIndex]
         const depthArray = pointsData[cameraIndex]
