@@ -14,6 +14,39 @@ https://rjw57.github.io/freenect2-python/
 4. `python server.py`
 5. navigate to `localhost:8000`
 
+## Recording (depth + color)
+
+Run `python record_server.py` instead of `python server.py`. It serves the same live view, and adds a recorder that saves depth + color.
+
+1. Dial in the live view with the controls. `Skip`, the `bb` sliders and `Origin` get baked into the recording, so trim out everything you don't need (walls etc).
+2. `Start Color Recording` / `Stop Color Recording`. The settings are read when the recording starts. The file is saved to `recordings/<timestamp>.kpc`.
+3. Pick it in the `Recordings` dropdown and hit `Play`. `Back to Live` returns to the kinect. `Point Size`, `Color`, `Rotate Speed` and `Use recorded color` still work during playback.
+
+`Raw Recording (old)` is the original recorder that appends the raw depth frames to `kinect_data.zlib`.
+
+### Using a recording in another ThreeJS project
+
+Copy the `.kpc` file into the other project's public folder, and copy `src/playback/PointCloudClip.ts` (it only depends on `three`).
+
+```
+const clip = await loadPointCloudClip('/my-recording.kpc')
+clip.points.scale.setScalar(1 / clip.unitsPerMeter) // recordings are in millimeters
+scene.add(clip.points)
+// every frame:
+clip.update(secondsSinceStart)
+```
+
+For React Three Fiber also copy `r3f/PointCloudPlayback.tsx` into the same folder: `<PointCloudPlayback url="/my-recording.kpc" />`
+
+### .kpc file format
+
+The file is gzipped, little endian. Positions are int16 millimeters with y up (the flip that the live view does is already applied).
+
+```
+header (16 bytes): "KPC1" | u8 version | u8 flags (bit 0 = has color) | u16 fps | f32 units per meter | u32 reserved
+frame:             u32 ms since start | u32 point count N | int16[N * 3] xyz | u8[N * 3] rgb | padding to 4 bytes
+```
+
 ## TROUBLESHOOTING
 
 1. If there is an error relating to "geometry" try running in a incognito browser or clearing cache

@@ -6,6 +6,8 @@ import * as pako from 'pako';
 import { pointCloudOptions } from '../components/Settings'
 import { CameraParams } from '../assets/cameraParams';
 import wsc from '../WebsocketConnection'
+import { playbackState } from '../playback/playbackState'
+import { PointCloudClip } from '../playback/PointCloudClip'
 
 const opts = {
   canvasWidth: window.innerWidth,
@@ -76,6 +78,10 @@ export default function PointCloudWS(canvas: HTMLCanvasElement) {
   const pointClouds:THREE.Points[] = []
   let boundingBoxMesh: THREE.Mesh
   let boundingBox: THREE.Box3
+  // recordings are played in their own group, the live group is hidden while one is playing
+  const playbackGroup: THREE.Group = new THREE.Group
+  let playingClip: PointCloudClip | null = null
+  let playbackStart = 0
 
   let first = true
   // let messageCount = 0
@@ -136,6 +142,7 @@ export default function PointCloudWS(canvas: HTMLCanvasElement) {
 
 
     createPointCloud(pointsData)
+    scene.add(playbackGroup)
     renderer.setSize(opts.canvasWidth, opts.canvasHeight)
   }
 
@@ -301,10 +308,40 @@ export default function PointCloudWS(canvas: HTMLCanvasElement) {
     renderer.setSize(window.innerWidth, window.innerHeight)
   }
 
+  function updatePlayback(clip: PointCloudClip | null) {
+    if (clip !== playingClip) {
+      if (playingClip) {
+        playbackGroup.remove(playingClip.points)
+      }
+      if (clip) {
+        // recordings are in mm, the live points are depth / 15
+        clip.points.scale.setScalar(1 / 15)
+        playbackGroup.add(clip.points)
+        playbackStart = performance.now()
+      }
+      playingClip = clip
+      group.visible = !clip
+    }
+    if (clip) {
+      scene.background = pointCloudOptions.color === 0 ? new THREE.Color(0xffffff) : new THREE.Color(0x000000)
+      clip.setUseColor(playbackState.useColor)
+      if (!playbackState.useColor || !clip.hasColor) {
+        clip.points.material.color = pointCloudOptions.color !== 0 ? new THREE.Color(0xffffff) : new THREE.Color(0x000000)
+      }
+      clip.points.material.size = pointCloudOptions.pointSize
+      clip.update((performance.now() - playbackStart) / 1000)
+    }
+  }
+
   function draw() {
     renderer.render(scene, camera);
-    updatePoints()
+    updatePlayback(playbackState.clip)
+    if (!playbackState.clip) {
+      updatePoints()
+    }
     group.rotateY(pointCloudOptions.rotateSpeed / 1000)
+    // recordings already have the group's flip baked in, which reverses the direction of the spin
+    playbackGroup.rotateY(-pointCloudOptions.rotateSpeed / 1000)
     // console.log(camera.position)
     // orbitControls.update()
     requestAnimationFrame(draw);

@@ -25,3 +25,4 @@ dist-ssr
 
 # recording file
 kinect_data.zlib
+recordings
